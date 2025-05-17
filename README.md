@@ -10,4 +10,4 @@
 
 🧾 Be Fully Scripted for consistency and repeatability
 
-I'm going to use bicep, azure cli, bash scripts to write the e2e cicd process in this solution
+I'm going to use bicep, azure cli, bash scripts to write the e2e cicd process in this solution 😃
