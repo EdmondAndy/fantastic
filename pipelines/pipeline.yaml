@@ -1,0 +1,74 @@
+name: $(date:yyyyMMdd)$(rev:.r)
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  name: container-agents
+
+variables:
+  location: 'australiaeast'
+  resourceGroupName: 'rg-web'
+  aksClusterName: 'fanstatic001
+
+stages:
+- stage: DeployInfrastructure
+  jobs:
+  - job: DeployBicep
+    steps:
+
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'aks-dev'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Deploying aks bicep files to Azure..."
+
+          az deployment group create \
+            --resource-group ${{ variables.resourceGroupName }} \
+            --template-file ../infrastructure/aks/main.bicep \
+            --parameters ../infrastructure/aks/params.bicepparam
+
+          echo "Deploying kv bicep files to Azure..."
+
+          az deployment group create \
+            --resource-group ${{ variables.resourceGroupName }} \
+            --template-file ../infrastructure/kv/main.bicep \
+            --parameters ../infrastructure/kv/params.bicepparam            
+
+          echo "Deploying acr bicep files to Azure..."
+
+          az deployment group create \
+            --resource-group ${{ variables.resourceGroupName }} \
+            --template-file ../infrastructure/acr/main.bicep \
+            --parameters ../infrastructure/acr/params.bicepparam  
+
+          echo "Deploying bastion bicep files to Azure..."
+
+          az deployment group create \
+            --resource-group ${{ variables.resourceGroupName }} \
+            --template-file ../infrastructure/bastion/main.bicep \
+            --parameters ../infrastructure/bastion/params.bicepparam              
+
+      displayName: 'Deploy Bicep Template'
+
+- stage: DeployToAKS
+  dependsOn: DeployInfrastructure
+  jobs:
+  - job: DeployApp
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'aks-dev'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az aks get-credentials --resource-group ${{ variables.resourceGroupName }} --name ${{ variables.aksClusterName }}
+          kubectl apply -f ../sample-app/deployment.yaml
+          kubectl apply -f ../sample-app/service.yaml'
+
+## this is a sample app with a couple of manifest files for demonstration purposes. 
+## helm charts are not used in this example, but they are a good option for deploying to aks.
